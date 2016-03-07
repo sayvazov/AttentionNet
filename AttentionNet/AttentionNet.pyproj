@@ -5,7 +5,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a80a3df3-ed8b-4c48-98db-bab6f0716a9f</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>tensortest.py</StartupFile>
+    <StartupFile>
+    </StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -27,9 +28,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="lasagnetest.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="tensortest.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
