@@ -3,26 +3,30 @@ import theano.tensor as T
 import lasagne
 import lasagne.nonlinearities as nl
 import numpy as np
+import speech_data
 
 #Parameters
-glimpse_size = 20
+height = 10
+batch_size = 10
+
+glimpse_size = 5
 glimpse_elements = glimpse_size**2
-num_glimpses = 10
+num_glimpses = 3
 
-glimpse_number_of_convolving_filters = 32
-glimpse_convolving_filter_size = 9          #must be odd
-glimpse_output_size = 20
+glimpse_number_of_convolving_filters = 2
+glimpse_convolving_filter_size = 3          #must be odd
+glimpse_output_size = 4
 
-recurrent_output_size = 40
+recurrent_output_size = 4
 
-classification_units = 20
+classification_units = 2
 
-downsample_rows = 100
-downsample_cols = 100
+downsample_rows = 10
+downsample_cols = 10
 
-context_number_of_convolving_filters = 64
-context_convolving_filter_size = 19          #must be odd
-context_pool_rate = 2
+context_number_of_convolving_filters = 2
+context_convolving_filter_size = 3         #must be odd
+context_pool_rate = 1
 
 #Glimpse Variables
 conv1_weights = theano.shared (np.random.normal (0.0, 0.01, 
@@ -72,10 +76,20 @@ class GlimpseLayer(lasagne.layers.Layer):
         cols = batch.shape[3]-glimpse_size
         start_row = location[0]*rows
         start_col =location[1]*cols
-        return A[:, :, start_row:start_row+glimpse_size, start_col:start_col+glimpse_size] 
+        return batch[:, :, start_row:start_row+glimpse_size, start_col:start_col+glimpse_size] 
 
     def get_output_shape_for(self, input_shape):
         return [input_shape[0], input_shape[1], glimpse_size, glimpse_size]
+    #batch is a 4 tensor, location is a vector of length (batch_size, 2)
+def takeGlimpse(bat, loc):
+    batch = bat.eval()
+    location = loc.eval()
+    rows = batch.shape[2]-glimpse_size
+    cols = batch.shape[3]-glimpse_size
+    start_row = location[0]*rows
+    start_col =location[1]*cols
+    return batch[:, :, start_row:start_row+glimpse_size, start_col:start_col+glimpse_size] 
+
 
     #input of 16 arguments
     #ouput of 2 arguments
@@ -239,6 +253,50 @@ def build_context_network(downsample):
     output = lasagne.layers.ReshapeLayer(fc, (-1, glimpse_output_size, recurrent_output_size))
     return output
 
+def build_network(input, downsample):
+    l_in = lasagne.layers.InputLayer((batch_size,1, height, None), input)
+    down = lasagne.layers.InputLayer((batch_size, 1, downsample_rows, downsample_cols), downsample)
+
+    r2 = build_context_network(down)
+    loc = build_emission_network(r2)
+    #glimpse = GlimpseLayer((l_in, loc))
+    print(lasagne.layers.get_output(loc, input).eval())
+    glimpse = takeGlimpse(input, lasagne.layers.get_output(loc, input))
+    labels = []
+    for i in range(num_glimpses):
+        Gn = build_glimpse_network(glimpse, loc)
+        r1, r2 = build_recurrent_network(Gn)
+        loc = build_emission_network(r2)
+        labels.append( build_classification_network(r1))
+        #glimpse = GlimpseLayer((l_in, loc))
+        glimpse = takeGlimpse(input, loc.get_output_for(input))
+    return labels
+
+
+
+data_r = theano.shared(np.random.normal(size=(10, 1, 10, 10)))
+target_r = theano.shared(np.random.normal(size=(10, 2)))
+#data = speech_data.read_data_sets("speechData")
+#batch = data.next_batch(10)
+#data = T.tensor4('data')
+#target = T.tensor4('target')
+data = data_r 
+target = target_r
+net = build_network(data, data)
+predictions = lasagne.layers.get_output(net, data)
+loss = lasagne.objectives.categorical_crossentropy(predictions, targets)
+loss = loss.mean()
+params = lasagne.layers.get_all_params(net)
+updates = lasagne.updates.sgd(loss, params, 1)
+train = theano.function([data, target], loss, updates=updates)
+
+
+
+
+for epoch in range(10):
+    loss = train(data_r, target_r)
+    print(loss)
+
 
 glimpse = T.tensor4('glimpse')
 location = T.tensor4('location')
@@ -256,16 +314,8 @@ input = T.tensor4('input')
 
 
 
-def main():
-    downsample = T.tensor4('downsample')
-    batch = T.tensor4('batch')
-    r2 = build_context_network(downsample)
-    loc = build_emission_network(r2_init)
-    glimpse = GlimpseLayer((batch, loc_init))
-    
-    for i in range(num_glimpses):
-        Gn = build_glimpse_network(glimpse, loc)
-        r1, r2 = build_recurrent_network(Gn)
-        loc = build_emission_network(r2_init)
+
+
+
 
 
