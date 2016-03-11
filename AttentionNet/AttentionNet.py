@@ -279,7 +279,7 @@ target_r = theano.shared(np.random.normal(size=(10, 2)))
 #data = speech_data.read_data_sets("speechData")
 #batch = data.next_batch(10)
 #data = T.tensor4('data')
-#target = T.tensor4('target')
+#target = T.tensor4('target') 
 data = data_r 
 target = target_r
 net = build_network(data, data)
